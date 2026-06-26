@@ -3,23 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <title>API Documentation</title>
-  <!-- 1. The Stylesheet -->
-  <link rel="stylesheet" href="https://jsdelivr.net" />
+  <!-- Cloudflare CDN Stylesheet -->
+  <link rel="stylesheet" href="https://cloudflare.com" />
 </head>
 <body>
   <div id="swagger-ui"></div>
 
-  <!-- 2. CRITICAL: The Core Javascript Library (Crucial missing link) -->
-  <script src="https://jsdelivr.net"></script>
-  
-  <!-- 3. Optional Preset styling script -->
-  <script src="https://jsdelivr.net"></script>
+  <!-- Cloudflare CDN Javascript Libraries -->
+  <script src="https://cloudflare.com"></script>
+  <script src="https://cloudflare.com"></script>
 
-  <!-- 4. The Initializer -->
   <script>
     window.onload = () => {
       window.ui = SwaggerUIBundle({
-        url: 'openapi.yaml', // Ensure your file is named exactly this or change this string
+        url: 'openapi.yaml', // Change this to your exact filename if it's different
         dom_id: '#swagger-ui',
         presets: [
           SwaggerUIBundle.presets.apis,

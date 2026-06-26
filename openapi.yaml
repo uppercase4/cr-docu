@@ -1,0 +1,689 @@
+openapi: 3.0.3
+info:
+  title: API Livestock - Integración Empresas
+  description: |
+    Endpoints de gestión de ofertas/lotes ganaderos para integración de empresas cliente.
+
+    **Notas importantes:**
+    - Todos los endpoints usan método **POST**.
+    - Los parámetros del body se envían como `application/x-www-form-urlencoded` o `application/json`.
+    - Las credenciales a incluir en HTTP-header "X-Api-key" se deben gestionar con el equipo de Clic Rural. Siendo éstas específicas para ambiente de Testing o Producción.
+
+  version: 1.1.0
+  contact:
+    name: Clic Rural.
+
+servers:
+  - url: https://{servidor}
+    description: Entorno de integración
+    variables:
+      servidor:
+        default: api.testing.clicrural.com
+        description: Dominio base del API
+        
+tags:
+  - name: Livestock
+    description: Alta, modificación y eliminación de lotes ganaderos
+  - name: Auctions
+    description: Acciones sobre remates de la empresa
+paths:
+  /api/livestock/upload:
+    post:
+      tags:
+        - Livestock
+      summary: Alta de oferta ganadera
+      description: |
+        Crea una nueva oferta/lote de hacienda.
+        Estado inicial **PENDIENTE**. Si quien publica es staff de la empresa,
+        la oferta puede aceptarse automáticamente.
+      operationId: addLivestockViaWeb
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LivestockUploadRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LivestockUploadRequest'
+      responses:
+        '200':
+          description: Oferta creada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LivestockUploadSuccess'
+              examples:
+                exito:
+                  summary: Alta exitosa
+                  value:
+                    status: 0
+                    data:
+                      o_titulo: "50 Novillos en Tacuarembó"
+                    og_id: 12345
+                    app_message: null
+                clicmarket:
+                  summary: Alta ClicMarket
+                  value:
+                    status: 0
+                    data: {}
+                    og_id: 12345
+                    app_message: "Su lote estará disponible hasta el día 15/07/2026 a las 18:00:00"
+        '400':
+          description: Error de validación o al insertar
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LivestockUploadError'
+              examples:
+                campos_faltantes:
+                  summary: Campos obligatorios faltantes
+                  value:
+                    status: 1
+                    text: "No se agrego oferta, campos obligatorios faltantes."
+                    campos_faltantes:
+                      - departamento
+                    app_message: null
+                peso_invalido:
+                  summary: Tipo de precio y peso no válidos
+                  value:
+                    status: 1
+                    text: "No se agrego oferta, tipo de precio y peso no validos"
+                    campos_faltantes:
+                      - peso_promedio
+                      - peso_maximo
+                    app_message: null
+
+  /api/livestock/update/{o_id}:
+    post:
+      tags:
+        - Livestock
+      summary: Modificación de oferta ganadera
+      description: |
+        Actualiza parcialmente un lote existente. Solo se modifican los campos enviados en el body.
+        
+      operationId: modificarLivestock
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+        - {}
+      parameters:
+        - name: o_id
+          in: path
+          required: true
+          description: ID del lote/oferta a modificar
+          schema:
+            type: integer
+            example: 12345
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LivestockUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LivestockUpdateRequest'
+      responses:
+        '200':
+          description: Oferta modificada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LivestockUpdateSuccess'
+              example:
+                text: "Oferta modificada"
+                o_id: 12345
+                data:
+                  og_peso: 420
+        '400':
+          description: Lote inexistente, falta dato obligatorio o error de procesamiento
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/LivestockUpdateErrorNotFound'
+                  - $ref: '#/components/schemas/LivestockUpdateErrorMissing'
+                  - $ref: '#/components/schemas/LivestockUpdateErrorException'
+              examples:
+                no_existe:
+                  summary: Lote no encontrado
+                  value:
+                    text: "No se pudo modificar, no existe lote o_id"
+                    o_id: 12345
+
+  /api/livestock/delete:
+    post:
+      tags:
+        - Livestock
+      summary: Eliminación de oferta ganadera
+      description: |
+        Baja lógica de un lote. Establece status 'eliminado', marca el lote como "baja" y guarda el motivo
+        en BD.
+      operationId: eliminarOferta
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+        - {}
+      parameters: []
+      requestBody:
+        required: false
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                motivo_eliminado:
+                  type: string
+                  description: Motivo de la baja (se persiste en o_baja_motivo)
+                  example: "Lote vendido por fuera de la plataforma"
+      responses:
+        '200':
+          description: Oferta eliminada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LivestockRemoveSuccess'
+              example:
+                status: 1
+                text: "Oferta eliminada."
+        '400':
+          description: No se pudo eliminar la oferta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LivestockRemoveError'
+              example:
+                status: 0
+                text: "No se ha podido eliminar la oferta."
+                
+  /api/auctions/update-order:
+    post:
+      tags:
+        - Auctions
+      summary: Actualizar orden de venta de un remate dado
+      description: |
+        Actualiza el orden de venta para uno o más lotes de un remate. Solo modifica lotes que pertenezcan al `remate_id` indicado y que no estén dados de baja.
+      operationId: actualizarOrdenDeVentaLotes
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - remate_id
+                - lotes
+              properties:
+                remate_id:
+                  type: integer
+                  description: ID del remate en C.R.
+                  example: 9722
+                lotes:
+                  type: array
+                  description: Lista de lotes con su nuevo orden de venta
+                  minItems: 1
+                  items:
+                    type: object
+                    required:
+                      - lote_id
+                      - orden_de_venta
+                    properties:
+                      lote_id:
+                        type: integer
+                        description: ID del lote/oferta
+                        example: 52652
+                      orden_de_venta:
+                        type: integer
+                        description: Nuevo valor de orden de venta a asignar
+                        example: 4
+            example:
+              remate_id: 123456
+              lotes:
+                - lote_id: 303132
+                  orden_de_venta: 4
+                - lote_id: 323334
+                  orden_de_venta: 1
+      responses:
+        '200':
+          description: Orden de venta actualizado correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detalle:
+                    type: string
+                    example: "Se actualizó el orden de venta en 2 lotes"
+                  actualizados:
+                    type: integer
+                    description: Cantidad de lotes efectivamente actualizados
+                    example: 2
+              example:
+                detalle: "Se actualizó el orden de venta en 2 lotes"
+                actualizados: 2
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detalle:
+                    type: string
+                    example: "No se recibieron lotes para actualizar."
+              examples:
+                json_invalido:
+                  summary: Body JSON inválido
+                  value:
+                    detalle: "Body JSON inválido."
+                sin_remate:
+                  summary: Falta remate_id
+                  value:
+                    detalle: "No se encontró remate."
+                sin_lotes:
+                  summary: Falta array de lotes
+                  value:
+                    detalle: "No se recibieron lotes para actualizar."
+  
+  
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API Key de empresa (coordinar con Clic Rural)
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token JWT de suscriptor o admin (opcional)
+
+  schemas:
+    LivestockUploadRequest:
+      type: object
+      required:
+        - categoria_id
+        - departamento
+        - email
+      properties:
+        categoria_id:
+          type: integer
+          description: ID de categoría de ganado (catalogado)
+          example: 12
+        departamento:
+          type: integer
+          description: ID del departamento (catalogado)
+          example: 5
+        cantidad:
+          type: integer
+          description: Cantidad total. (cantidad_machos + cantidad_hembras)
+          example: 50
+        cantidad_machos:
+          type: integer
+          description: Cantidad de machos (alternativa a cantidad)
+          example: 30
+        cantidad_hembras:
+          type: integer
+          description: Cantidad de hembras (alternativa a cantidad)
+          example: 20
+        email:
+          type: string
+          format: email
+          description: (Gestionar con cada empresa un email de staff que quedará como responsable del lote)
+          example: usuario@empresa.com
+        precio:
+          type: string
+          description: Precio de la oferta
+          example: "2.50"
+        tipo_precio_kg:
+          type: string
+          enum: ["0", "1"]
+          description: "`0` = Al bulto, `1` = Al kilogramo"
+        moneda:
+          type: string
+          example: "U$S"
+        remate_id:
+          type: integer
+          description: ID del remate.
+        titulo:
+          type: string
+        descripcion:
+          type: string
+        localidad:
+          type: integer
+        localidad_texto:
+          type: string
+        raza:
+          type: string
+          description: ID(s) de raza separados por coma
+          example: "15,22"
+        raza_texto:
+          type: string
+        publico:
+          type: integer
+          enum: [0, 1]
+          description: Visibilidad (`1` = Público, `0` = Privado)
+        plazo:
+          type: integer
+        plazo_texto:
+          type: string
+        observaciones:
+          type: string
+        from:
+          type: string
+          description: Origen o dispositivo
+        step:
+          type: number
+          description: Incremento de puja
+        propietario_texto:
+          type: string
+        pedido_id:
+          type: integer
+        orden_venta_asignar:
+          type: boolean
+        peso_promedio:
+          type: number
+        peso_minimo:
+          type: number
+        peso_maximo:
+          type: number
+        tipo_peso:
+          type: string
+        pesada:
+          type: string
+        desbaste:
+          type: string
+        lote_parejo:
+          type: string
+        estado:
+          type: string
+        clase:
+          type: string
+        edad:
+          type: string
+        edad_meses_desde:
+          type: integer
+        edad_meses_hasta:
+          type: integer
+        meses_prenez:
+          type: integer
+        estado_reproductivo:
+          type: string
+        destete:
+          type: integer
+          enum: [1]
+        sanidad:
+          type: string
+        trazabilidad:
+          type: string
+        nro_ref:
+          type: string
+        establecimiento:
+          type: string
+        detalle_categoria_otros:
+          type: string
+        tabla:
+          type: string
+        tabla_desde:
+          type: string
+        tabla_hasta:
+          type: string
+        tabla_centavos:
+          type: string
+        encierre:
+          type: string
+        entrega:
+          type: string
+        entrega_fecha:
+          type: string
+        modalidad_retiro:
+          type: string
+        jaula:
+          type: string
+        km_camion:
+          type: number
+        peso_arriba_camion:
+          type: number
+        zona_garrapata:
+          type: string
+        conoce_miomio:
+          type: integer
+        info_privada:
+          type: string
+        video:
+          type: string
+        video_2:
+          type: string
+        imagen_1:
+          type: string
+        imagen_2:
+          type: string
+        imagen_3:
+          type: string
+        imagen_4:
+          type: string
+
+    LivestockUpdateRequest:
+      type: object
+      properties:
+        categoria_id:
+          type: integer
+        raza:
+          type: string
+        raza_texto:
+          type: string
+        cantidad:
+          type: integer
+        cantidad_machos:
+          type: integer
+        cant_machos:
+          type: integer
+          description: Alias de cantidad_machos
+        cantidad_hembras:
+          type: integer
+        cant_hembras:
+          type: integer
+          description: Alias de cantidad_hembras
+        peso_promedio:
+          type: number
+        peso_minimo:
+          type: number
+        peso_maximo:
+          type: number
+        tipo_peso:
+          type: string
+        departamento:
+          type: integer
+        localidad:
+          type: integer
+        localidad_texto:
+          type: string
+        titulo:
+          type: string
+        precio:
+          type: string
+        tipo_precio_kg:
+          type: string
+          enum: ["0", "1"]
+        plazo:
+          type: integer
+        plazo_texto:
+          type: string
+        remate_id:
+          type: integer
+        r_id:
+          type: integer
+          description: Alias de remate_id
+        publico:
+          type: integer
+          enum: [0, 1]
+        video:
+          type: string
+        video_2:
+          type: string
+        imagen_1:
+          type: string
+        imagen_2:
+          type: string
+        imagen_3:
+          type: string
+        imagen_4:
+          type: string
+        step:
+          type: number
+        observaciones:
+          type: string
+        establecimiento:
+          type: string
+        estado:
+          type: string
+        clase:
+          type: string
+        sanidad:
+          type: string
+        edad:
+          type: string
+        trazabilidad:
+          type: string
+        desbaste:
+          type: string
+        lote_parejo:
+          type: string
+        tabla:
+          type: string
+        tabla_desde:
+          type: string
+        tabla_hasta:
+          type: string
+        tabla_centavos:
+          type: string
+        encierre:
+          type: string
+        entrega:
+          type: string
+        entrega_fecha:
+          type: string
+        modalidad_retiro:
+          type: string
+        jaula:
+          type: string
+        tratamiento_nutricional:
+          type: string
+        tratamiento_nutricional_otro:
+          type: string
+        estado_reproductivo:
+          type: string
+        zona_garrapata:
+          type: string
+        conoce_miomio:
+          type: integer
+        km_camion:
+          type: number
+        peso_arriba_camion:
+          type: number
+        destete:
+          type: string
+          description: "Valores: Si o 1"
+        nro_ref:
+          type: string
+        propietario_texto:
+          type: string
+        from:
+          type: string
+
+    LivestockUploadSuccess:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 0
+        data:
+          type: object
+          description: Datos enviados al crear la oferta
+        og_id:
+          type: integer
+          description: ID del lote creado
+          example: 12345
+        app_message:
+          type: string
+          nullable: true
+
+    LivestockUploadError:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 1
+        text:
+          type: string
+        campos_faltantes:
+          type: array
+          items:
+            type: string
+        app_message:
+          type: string
+          nullable: true
+
+    LivestockUpdateSuccess:
+      type: object
+      properties:
+        text:
+          type: string
+          example: "Oferta modificada"
+        o_id:
+          type: integer
+        data:
+          type: object
+
+    LivestockUpdateErrorNotFound:
+      type: object
+      properties:
+        text:
+          type: string
+        o_id:
+          type: integer
+
+    LivestockUpdateErrorMissing:
+      type: object
+      properties:
+        status:
+          type: integer
+        text:
+          type: string
+
+    LivestockUpdateErrorException:
+      type: object
+      properties:
+        status:
+          type: integer
+        text:
+          type: string
+
+    LivestockRemoveSuccess:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 1
+        text:
+          type: string
+          example: "Oferta eliminada."
+
+    LivestockRemoveError:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 0
+        text:
+          type: string
+          example: "No se ha podido eliminar la oferta."

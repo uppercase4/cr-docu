@@ -2,17 +2,30 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>API Doc</title>
-  <link rel="stylesheet" href="https://unpkg.com" />
+  <title>API Documentation</title>
+  <!-- 1. The Stylesheet -->
+  <link rel="stylesheet" href="https://jsdelivr.net" />
 </head>
 <body>
   <div id="swagger-ui"></div>
-  <script src="https://unpkg.com"></script>
+
+  <!-- 2. CRITICAL: The Core Javascript Library (Crucial missing link) -->
+  <script src="https://jsdelivr.net"></script>
+  
+  <!-- 3. Optional Preset styling script -->
+  <script src="https://jsdelivr.net"></script>
+
+  <!-- 4. The Initializer -->
   <script>
     window.onload = () => {
       window.ui = SwaggerUIBundle({
-        url: 'openapi.yaml', // Points directly to your repo's yaml file
+        url: 'openapi.yaml', // Ensure your file is named exactly this or change this string
         dom_id: '#swagger-ui',
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        layout: "BaseLayout"
       });
     };
   </script>

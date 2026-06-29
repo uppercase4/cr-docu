@@ -171,14 +171,21 @@ paths:
         - {}
       parameters: []
       requestBody:
-        required: true
+        required: false
         content:
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/LivestockDelete'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/LivestockDelete'
+              type: object
+              properties:
+                o_id:
+                  required: true
+                  type: integer
+                  description: ID del lote a aplicar baja
+                  example: 123321
+                motivo_eliminado:
+                  type: string
+                  description: Motivo de la baja (se persiste en o_baja_motivo)
+                  example: "Lote vendido por fuera de la plataforma"
       responses:
         '200':
           description: Oferta eliminada
@@ -306,20 +313,6 @@ components:
       description: Token JWT de suscriptor o admin (opcional)
 
   schemas:
-      LivestockDelete:
-      type: object
-      required:
-        - o_id
-        - motivo_eliminado
-      properties:
-        o_id:
-          type: integer
-          description: ID del lote a dar de baja
-          example: 123543
-        motivo_eliminado:
-          type: string
-          description: Motivo de la baja del lote
-          example: "Vendido fuera del remate"
     LivestockUploadRequest:
       type: object
       required:

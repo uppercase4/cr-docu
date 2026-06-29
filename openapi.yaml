@@ -320,12 +320,12 @@ components:
           type: string
           description: Motivo de la baja del lote
           example: "Vendido fuera del remate"
-    LivestockUploadRequest:
-      type: object
-      required:
-        - categoria_id
-        - departamento
-        - email
+      LivestockUploadRequest:
+        type: object
+        required:
+          - categoria_id
+          - departamento
+          - email
       properties:
         categoria_id:
           type: integer

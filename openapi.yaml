@@ -169,25 +169,22 @@ paths:
         - ApiKeyAuth: []
         - BearerAuth: []
         - {}
-      parameters:
-        - name: o_id
-          in: path
-          required: true
-          description: ID del lote/oferta a aplicar baja
-          schema:
-            type: integer
-            example: 12345
-      requestBody:
-        required: false
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                motivo_eliminado:
-                  type: string
-                  description: Motivo de la baja (se persiste en o_baja_motivo)
-                  example: "Lote vendido por fuera de la plataforma"
+      parameters:[]
+      requestBody: 
+        required: false 
+        content: 
+          application/x-www-form-urlencoded: 
+          schema: 
+            type: object 
+            properties: 
+              o_id:
+                type: integer 
+                description: ID de la oferta ganadera a eliminar 
+                example: 12345 
+              motivo_eliminado: 
+                type: string 
+                description: Motivo de la baja (se persiste en o_baja_motivo) 
+                example: "Lote vendido por fuera de la plataforma"
       responses:
         '200':
           description: Oferta eliminada

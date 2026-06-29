@@ -207,7 +207,7 @@ paths:
         - Auctions
       summary: Actualizar orden de venta de un remate dado
       description: |
-        Actualiza el orden de venta para uno o más lotes de un remate. Solo modifica lotes que pertenezcan al `remate_id` indicado y que no estén dados de baja.
+        Actualiza el orden de venta para uno o más lotes de un remate. Solo modifica lotes que pertenezcan al remate indicado y que no estén dados de baja.
       operationId: actualizarOrdenDeVentaLotes
       security:
         - ApiKeyAuth: []

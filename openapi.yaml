@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: API Livestock - Integración Empresas
+  title: Clic Rural - Integración Empresas (API)
   description: |
     Endpoints de gestión de ofertas/lotes ganaderos para integración de empresas cliente.
 

@@ -169,7 +169,14 @@ paths:
         - ApiKeyAuth: []
         - BearerAuth: []
         - {}
-      parameters: []
+      parameters:
+        - name: o_id
+          in: path
+          required: true
+          description: ID del lote/oferta a aplicar baja
+          schema:
+            type: integer
+            example: 12345
       requestBody:
         required: false
         content:

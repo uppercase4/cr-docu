@@ -169,7 +169,7 @@ paths:
         - ApiKeyAuth: []
         - BearerAuth: []
         - {}
-      parameters:[]
+      parameters: []
       requestBody: 
         required: false 
         content: 

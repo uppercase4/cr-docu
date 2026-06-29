@@ -171,14 +171,13 @@ paths:
         - {}
       parameters: []
       requestBody:
-        required: false
+        required: true
         content:
           application/x-www-form-urlencoded:
             schema:
               type: object
               properties:
                 o_id:
-                  required: true
                   type: integer
                   description: ID del lote a aplicar baja
                   example: 123321

@@ -300,13 +300,12 @@ paths:
     get:
       tags:
         - Auctions
-      summary: Consultar lotes de un remate (formato online)
+      summary: Consultar lotes de un remate.
       description: |
-        Devuelve los lotes pertenecientes a un remate, serializados en el formato utilizado
-        para remates online.
+        Devuelve los lotes pertenecientes a un remate, serializados con sus datos completos.        
 
-        La empresa se identifica mediante la cabecera `X-API-Key`. Solo se incluyen lotes
-        de la empresa autenticada (salvo remates tipo Cabaña, donde se incluyen todos los lotes).
+        La empresa se identifica mediante el header `X-API-Key`. Solo se incluyen lotes
+        de la empresa autenticada.
         No se incluyen lotes dados de baja.
       operationId: getAuctionLivestock
       security:

@@ -5,7 +5,7 @@ info:
     Endpoints de gestión de ofertas/lotes ganaderos para integración de empresas cliente.
 
     **Notas importantes:**
-    - Todos los endpoints usan método **POST**.
+    - Los endpoints de escritura usan método **POST**. Las consultas (lectura) usan **GET**.
     - Los parámetros del body se envían como `application/x-www-form-urlencoded` o `application/json`.
     - Las credenciales a incluir en HTTP-header "X-Api-key" se deben gestionar con el equipo de Clic Rural. Siendo éstas específicas para ambiente de Testing o Producción.
 
@@ -295,8 +295,73 @@ paths:
                   summary: Falta array de lotes
                   value:
                     detalle: "No se recibieron lotes para actualizar."
-  
-  
+
+  /api/auctions/lotes-formato-online/{auction_id}:
+    get:
+      tags:
+        - Auctions
+      summary: Consultar lotes de un remate (formato online)
+      description: |
+        Devuelve los lotes pertenecientes a un remate, serializados en el formato utilizado
+        para remates online.
+
+        La empresa se identifica mediante la cabecera `X-API-Key`. Solo se incluyen lotes
+        de la empresa autenticada (salvo remates tipo Cabaña, donde se incluyen todos los lotes).
+        No se incluyen lotes dados de baja.
+      operationId: getAuctionLivestock
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: auction_id
+          in: path
+          required: true
+          description: ID del remate (`r_id`)
+          schema:
+            type: integer
+            example: 9722
+      responses:
+        '200':
+          description: Listado de lotes del remate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuctionLivestockOnlineResponse'
+              example:
+                count: 2
+                detalle:
+                  - id: 52652
+                    nro_lote: "1"
+                    nro_ref: "A-100"
+                    empresa_id: 100
+                    empresa: "Empresa Ejemplo"
+                    titulo: "50 Novillos en Tacuarembó"
+                    categoria_id: 12
+                    categoria: "Novillos"
+                    cantidad: 50
+                    peso: 420
+                    precio: "2.50"
+                    moneda: "U$S"
+                    dpto: "Tacuarembó"
+                    localidad_texto: "Paso de los Toros"
+                    status_code: 1
+                    vendido: 0
+                    baja: 0
+                  - id: 52653
+                    nro_lote: "2"
+                    empresa_id: 100
+                    titulo: "30 Vaquillonas en Tacuarembó"
+                    cantidad: 30
+                    precio: "2.80"
+        '400':
+          description: Empresa no autorizada para el remate indicado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuctionLivestockOnlineUnauthorized'
+              example:
+                status: 0
+                has_error: 1
+                text: "empresa no autorizada para este remate. 100R9722"
 
 components:
   securitySchemes:
@@ -691,3 +756,142 @@ components:
         text:
           type: string
           example: "No se ha podido eliminar la oferta."
+
+    AuctionLivestockOnlineResponse:
+      type: object
+      description: Respuesta con los lotes del remate en formato online
+      properties:
+        count:
+          type: integer
+          description: Cantidad de lotes incluidos en `detalle`
+          example: 2
+        detalle:
+          type: array
+          description: Lista de lotes serializados (ordenados por orden de venta)
+          items:
+            $ref: '#/components/schemas/AuctionLivestockOnlineItem'
+
+    AuctionLivestockOnlineItem:
+      type: object
+      description: |
+        Lote serializado en formato online. El objeto puede incluir campos adicionales
+        según el tipo de remate y la configuración del lote.
+      properties:
+        id:
+          type: integer
+          description: ID del lote (`o_id`)
+          example: 52652
+        nro_lote:
+          type: string
+          description: Número de lote según formato del remate
+          example: "1"
+        nro_ref:
+          type: string
+          nullable: true
+          description: Número de referencia / certificación
+        empresa_id:
+          type: integer
+          description: ID de la empresa propietaria del lote
+        empresa:
+          type: string
+          description: Nombre de la empresa
+        empresa_logo:
+          type: string
+          description: URL del logo de la empresa
+        empresa_web:
+          type: string
+        link_web:
+          type: string
+          description: URL pública del lote
+        titulo:
+          type: string
+          description: Título del lote
+        subtitulo:
+          type: string
+          nullable: true
+        categoria_id:
+          type: integer
+        categoria:
+          type: string
+        categoria_padre:
+          type: string
+        cantidad:
+          type: integer
+        cantidad_machos:
+          type: integer
+          nullable: true
+        cantidad_hembras:
+          type: integer
+          nullable: true
+        peso:
+          type: number
+          nullable: true
+        peso_min:
+          type: number
+          nullable: true
+        peso_max:
+          type: number
+          nullable: true
+        precio:
+          type: string
+          nullable: true
+        moneda:
+          type: string
+          example: "U$S"
+        tipo_precio_kg:
+          type: integer
+          nullable: true
+          description: "0 = por bulto, 1 = por kg"
+        dpto:
+          type: string
+          description: Nombre del departamento
+        dpto_id:
+          type: integer
+        localidad_texto:
+          type: string
+        establecimiento:
+          type: string
+          nullable: true
+        raza:
+          type: string
+          nullable: true
+        estado:
+          type: string
+          nullable: true
+        clase:
+          type: string
+          nullable: true
+        entrega:
+          type: string
+          nullable: true
+        observaciones:
+          type: string
+          nullable: true
+        video:
+          type: string
+          nullable: true
+        status_code:
+          type: integer
+          description: Código de estado del lote
+        vendido:
+          type: integer
+          description: "1 si está vendido, 0 en caso contrario"
+        baja:
+          type: integer
+          description: "1 si está dado de baja, 0 en caso contrario"
+        privado:
+          type: integer
+          nullable: true
+
+    AuctionLivestockOnlineUnauthorized:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 0
+        has_error:
+          type: integer
+          example: 1
+        text:
+          type: string
+          example: "empresa no autorizada para este remate. 100R9722"

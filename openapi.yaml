@@ -204,7 +204,207 @@ paths:
               example:
                 status: 0
                 text: "No se ha podido eliminar la oferta."
-                
+
+  /api/livestock/{o_id}:
+    get:
+      tags:
+        - Livestock
+      summary: Consultar una oferta ganadera
+      description: |
+        Devuelve el detalle completo de un lote.
+
+        Sirve, por ejemplo, para consultar el estado del procesamiento de un video subido
+        mediante `/v2/ofertas/{o_id}/upload/video` a través del campo `video_status`.
+
+        La respuesta se cachea durante 60 segundos.
+      operationId: getLivestockDeal
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+        - {}
+      parameters:
+        - name: o_id
+          in: path
+          required: true
+          description: ID del lote/oferta
+          schema:
+            type: integer
+            example: 12345
+      responses:
+        '200':
+          description: Detalle del lote
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LivestockDetail'
+              example:
+                id: 12345
+                nro_lote: "1"
+                nro_ref: "A-100"
+                empresa_id: 100
+                empresa: "Empresa Ejemplo"
+                link_web: "https://www.empresa.com/ofertas/12345"
+                titulo: "50 Novillos en Tacuarembó"
+                categoria_id: 12
+                categoria: "Novillos"
+                cantidad: 50
+                peso: 420
+                precio: "2.50"
+                moneda: "U$S"
+                tipo_precio_kg: 1
+                dpto: "Tacuarembó"
+                dpto_id: 5
+                localidad_texto: "Paso de los Toros"
+                video: "https://ftp.rural-server.com/multimedia/videos/12345.mp4"
+                video_status: "done"
+                r_id: 9722
+                status_code: 1
+                vendido: 0
+                baja: 0
+                privado: 0
+
+  /v2/ofertas/{o_id}/upload/video:
+    post:
+      tags:
+        - Livestock
+      summary: Subida de video de una oferta ganadera
+      description: |
+        Sube uno o más videos (hasta 5) para un lote existente. Si se envían varios archivos,
+        se unen en un único video en el orden recibido.
+
+        El procesamiento es **asíncrono**: la respuesta `202` indica que los videos fueron recibidos
+        y encolados, no que el video final ya esté disponible. El procesamiento demora aprox.
+        2 minutos por video.
+
+        Solo puede subir videos la empresa dueña del lote.
+
+        Para recibir los errores en formato JSON se debe enviar el header `Accept: application/json`.
+      operationId: uploadLivestockVideo
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: o_id
+          in: path
+          required: true
+          description: ID del lote/oferta
+          schema:
+            type: integer
+            example: 12345
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LivestockVideoUploadRequest'
+            encoding:
+              files[]:
+                contentType: video/*
+      responses:
+        '202':
+          description: Videos recibidos y encolados para su procesamiento
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LivestockVideoUploadAccepted'
+              examples:
+                un_video:
+                  summary: Un video
+                  value:
+                    message: "1 video recibido. El procesamiento puede demorar aprox. 2 minutos."
+                varios_videos:
+                  summary: Varios videos
+                  value:
+                    message: "3 videos recibidos. El procesamiento puede demorar aprox. 6 minutos."
+        '400':
+          description: No se recibió ningún archivo o se superó la cantidad máxima
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                sin_archivos:
+                  summary: Sin archivos
+                  value:
+                    status: 400
+                    message: "No se recibió ningún archivo de video."
+                    errors: []
+                limite_servidor:
+                  summary: Subida mayor al límite del servidor
+                  value:
+                    status: 400
+                    message: "La subida supera el límite del servidor (post_max_size). No se recibió ningún archivo."
+                    errors: []
+                demasiados:
+                  summary: Más de 5 archivos
+                  value:
+                    status: 400
+                    message: "Máximo 5 videos por subida."
+                    errors: []
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                status: 401
+                message: "No autenticado."
+                errors: []
+        '403':
+          description: La empresa autenticada no es la dueña del lote
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                status: 403
+                message: "No autorizado."
+                errors: []
+        '404':
+          description: Lote inexistente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                status: 404
+                message: "Recurso no encontrado."
+                errors: []
+        '422':
+          description: Algún archivo no es un video válido o supera los 150 MB
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                no_es_video:
+                  summary: Archivo que no es video
+                  value:
+                    status: 422
+                    message: "Errores de validación."
+                    errors:
+                      - field: "files[0]"
+                        message: "El archivo debe ser un video válido"
+                muy_grande:
+                  summary: Archivo demasiado grande
+                  value:
+                    status: 422
+                    message: "Errores de validación."
+                    errors:
+                      - field: "files[0]"
+                        message: "video1.mp4: demasiado grande (180 MB). Máximo permitido: 150 MB."
+        '503':
+          description: No se pudo encolar el procesamiento. Se puede reintentar.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                status: 503
+                message: "No se pudo encolar el procesamiento del video. Intentá de nuevo."
+                errors: []
+
   /api/auctions/update-order:
     post:
       tags:
@@ -755,6 +955,160 @@ components:
         text:
           type: string
           example: "No se ha podido eliminar la oferta."
+
+    LivestockDetail:
+      type: object
+      description: |
+        Detalle de un lote. Se listan los campos principales; la respuesta incluye campos
+        adicionales según la categoría, el remate y la configuración del lote.
+      properties:
+        id:
+          type: integer
+          description: ID del lote (`o_id`)
+        nro_lote:
+          type: string
+          description: Número de lote según formato del remate
+        nro_ref:
+          type: string
+          nullable: true
+          description: Número de referencia / certificación
+        empresa_id:
+          type: integer
+        empresa:
+          type: string
+        link_web:
+          type: string
+          description: URL pública del lote
+        titulo:
+          type: string
+        subtitulo:
+          type: string
+          nullable: true
+        categoria_id:
+          type: integer
+        categoria:
+          type: string
+        cantidad:
+          type: integer
+        cantidad_machos:
+          type: integer
+          nullable: true
+        cantidad_hembras:
+          type: integer
+          nullable: true
+        peso:
+          type: number
+          nullable: true
+        peso_min:
+          type: number
+          nullable: true
+        peso_max:
+          type: number
+          nullable: true
+        precio:
+          type: string
+          nullable: true
+        moneda:
+          type: string
+        tipo_precio_kg:
+          type: integer
+          nullable: true
+          description: "0 = por bulto, 1 = por kg"
+        dpto:
+          type: string
+          description: Nombre del departamento
+        dpto_id:
+          type: integer
+        localidad_texto:
+          type: string
+        raza_texto:
+          type: string
+          nullable: true
+        observaciones:
+          type: string
+          nullable: true
+        video:
+          type: string
+          nullable: true
+          description: URL del video del lote
+        video_status:
+          type: string
+          nullable: true
+          enum: [processing, done, failed, null]
+          description: |
+            Estado del procesamiento del último video subido mediante `/v2/ofertas/{o_id}/upload/video`:
+            `processing` = en proceso, `done` = disponible, `failed` = falló el procesamiento.
+            `null` si nunca se subió un video por esa vía.
+        r_id:
+          type: integer
+          nullable: true
+          description: ID del remate al que pertenece el lote
+        status_code:
+          type: integer
+          description: Código de estado del lote (`4` = dado de baja)
+        status_text:
+          type: string
+        vendido:
+          type: integer
+          description: "1 si está vendido, 0 en caso contrario"
+        baja:
+          type: integer
+          description: "1 si está dado de baja, 0 en caso contrario"
+        privado:
+          type: integer
+          description: "1 si es privado, 0 si es público"
+
+    LivestockVideoUploadRequest:
+      type: object
+      required:
+        - files[]
+      properties:
+        files[]:
+          type: array
+          description: |
+            Archivos de video (`video/*`), de 1 a 5, de hasta 150 MB cada uno.
+            Se envía un campo `files[]` por archivo.
+          minItems: 1
+          maxItems: 5
+          items:
+            type: string
+            format: binary
+        generar_thumb_from_video:
+          type: boolean
+          default: true
+          description: Genera la imagen de portada del lote a partir del video.
+        generar_hls:
+          type: boolean
+          default: false
+          description: Genera además una versión HLS (streaming adaptativo) del video.
+
+    LivestockVideoUploadAccepted:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "1 video recibido. El procesamiento puede demorar aprox. 2 minutos."
+
+    ApiError:
+      type: object
+      properties:
+        status:
+          type: integer
+          description: Código HTTP
+          example: 400
+        message:
+          type: string
+          example: "Solicitud inválida."
+        errors:
+          type: array
+          description: Detalle de errores de validación (vacío si no aplica)
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
 
     AuctionLivestockOnlineResponse:
       type: object

@@ -405,6 +405,87 @@ paths:
                 message: "No se pudo encolar el procesamiento del video. Intentá de nuevo."
                 errors: []
 
+  /api/remates/crear:
+    post:
+      tags:
+        - Auctions
+      summary: Alta de remate
+      description: |
+        Crea un nuevo remate asociado a la empresa autenticada mediante el header `X-API-Key`.
+
+        El remate se crea **oculto**: no se muestra públicamente hasta que Clic Rural lo habilite.
+        El `remate_id` devuelto se puede usar como `remate_id` al dar de alta lotes.
+      operationId: crearRemate
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AuctionCreateRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuctionCreateRequest'
+            example:
+              nombre_remate: "Remate de Primavera"
+              fecha_inicio: "2026-11-20"
+              fecha_fin: "2026-11-21"
+              hora: "14:00"
+              administra: "Empresa Ejemplo"
+              organiza: "Sociedad Rural Ejemplo"
+      responses:
+        '201':
+          description: Remate creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuctionCreateSuccess'
+              example:
+                status: 1
+                text: "Remate creado."
+                remate:
+                  remate_id: 9722
+                  nombre_remate: "Remate de Primavera"
+                  fecha_inicio: "2026-11-20"
+                  fecha_fin: "2026-11-21"
+                  hora: "14:00"
+                  administra: "Empresa Ejemplo"
+                  organiza: "Sociedad Rural Ejemplo"
+        '400':
+          description: |
+            Error de validación o al insertar. Si hay varios errores de validación,
+            se devuelven todos juntos en `text`, separados por espacio.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuctionCreateError'
+              examples:
+                validacion:
+                  summary: Campos faltantes o con formato inválido
+                  value:
+                    status: 0
+                    text: "nombre_remate es requerido. hora es requerida con formato HH:MM."
+                fechas:
+                  summary: Fecha de fin anterior a la de inicio
+                  value:
+                    status: 0
+                    text: "fecha_fin no puede ser anterior a fecha_inicio."
+                error_alta:
+                  summary: Error al insertar
+                  value:
+                    status: 0
+                    text: "No se ha podido crear el remate."
+        '401':
+          description: API Key inválida o ausente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuctionCreateError'
+              example:
+                status: 0
+                text: "Las credenciales proporcionadas no son válidas."
+
   /api/auctions/update-order:
     post:
       tags:
@@ -1109,6 +1190,83 @@ components:
                 type: string
               message:
                 type: string
+
+    AuctionCreateRequest:
+      type: object
+      required:
+        - nombre_remate
+        - fecha_inicio
+        - hora
+      properties:
+        nombre_remate:
+          type: string
+          description: Nombre del remate
+          example: "Remate de Primavera"
+        fecha_inicio:
+          type: string
+          format: date
+          description: Fecha de inicio (`YYYY-MM-DD`)
+          example: "2026-11-20"
+        fecha_fin:
+          type: string
+          format: date
+          description: Fecha de fin (`YYYY-MM-DD`). No puede ser anterior a `fecha_inicio`.
+          example: "2026-11-21"
+        hora:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          description: Hora de inicio (`HH:MM`, 24 horas)
+          example: "14:00"
+        administra:
+          type: string
+          description: Quién administra el remate
+        organiza:
+          type: string
+          description: Quién organiza el remate
+
+    AuctionCreateSuccess:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 1
+        text:
+          type: string
+          example: "Remate creado."
+        remate:
+          type: object
+          description: Datos del remate creado. Los campos opcionales no enviados vuelven en `null`.
+          properties:
+            remate_id:
+              type: integer
+              description: ID del remate creado (`r_id`)
+              example: 9722
+            nombre_remate:
+              type: string
+            fecha_inicio:
+              type: string
+              format: date
+            fecha_fin:
+              type: string
+              format: date
+              nullable: true
+            hora:
+              type: string
+            administra:
+              type: string
+              nullable: true
+            organiza:
+              type: string
+              nullable: true
+
+    AuctionCreateError:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 0
+        text:
+          type: string
 
     AuctionLivestockOnlineResponse:
       type: object
